@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.venv/
+
+# Raw source pulls are snapshots of other people's data: reproducible via the
+# loaders, too large to version, and in the shot-logs case not ours to publish.
+data/raw/
