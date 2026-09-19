@@ -1,40 +1,38 @@
 # NBA Shot Quality & Live Game Analytics
 
 Expected field-goal probability (xFG) for NBA shot attempts, plus the live-data
-plumbing needed to score shots as they happen. Built to the phased roadmap in
-`docs/roadmap.md`; this repository currently covers **Phase 0 — setup and data
-validation**.
+plumbing needed to score shots as they happen. Follows the roadmap in
+`docs/roadmap.md`. Phase 0 (setup and data checks) is done.
 
-## What Phase 0 established
+## What Phase 0 found
 
-Run `python main.py` to regenerate `reports/phase0_validation.md`. The findings
-that shape every later phase:
+Run `python main.py` to regenerate `reports/phase0_validation.md`.
 
-- **nba.com refuses this machine.** Both `stats.nba.com` (`shotchartdetail`,
-  `leaguedashptstats`, `leaguedashlineups`) and `cdn.nba.com` (live play-by-play)
-  sit behind Akamai bot protection that returns `Access Denied` / times out from
-  datacenter IPs — in Python *and* in a real browser. `nba_api` therefore works
-  from a residential connection only, and never from CI. The endpoint wrappers
-  live in `src/shot_quality/sources/nba_stats.py`; `reachability_report()` probes
-  both hosts so a pipeline can degrade deliberately instead of crashing.
-- **A usable substitute exists for shot data only.** The hoopR NBA data mirror
-  (ESPN-derived, per-season parquet on GitHub) covers 2002-2026 with shot
-  coordinates, period, game clock and outcome — roughly `shotchartdetail`'s
-  field set. There is **no** public mirror for the tracking-defense or lineup
-  endpoints, so Phases 2-3 will need a residential-network run or a cached pull.
+- **nba.com blocks this machine.** `stats.nba.com` (`shotchartdetail`,
+  `leaguedashptstats`, `leaguedashlineups`) times out and `cdn.nba.com` (live
+  play-by-play) returns Akamai `Access Denied` from datacenter IPs, in Python
+  and in a real browser. So `nba_api` only works from a home connection, not
+  from CI. Those wrappers are in `src/shot_quality/sources/nba_stats.py`, and
+  `reachability_report()` checks both hosts so a pipeline can skip them instead
+  of crashing.
+- **There is a stand-in for shot data only.** The hoopR NBA mirror
+  (ESPN-derived, one parquet per season on GitHub) covers 2002-2026 with shot
+  coordinates, period, game clock and outcome, which is close to what
+  `shotchartdetail` returns. Nothing similar exists for the tracking-defense or
+  lineup endpoints, so Phases 2-3 need a run from a home network or a cached
+  pull.
 - **`shotchartdetail` has no shot clock.** The roadmap lists shot clock as a
-  current-season feature; the endpoint does not return one. Shot clock exists
-  only in the 2014-15 shot logs, so it cannot be a live feature.
-- **Shot angle is unavailable historically.** The 2014-15 logs carry
-  `SHOT_DIST` but no coordinates, so angle cannot be reconstructed for them.
-- **Measured shared feature set:** `period`, `seconds_remaining_in_period`,
-  `shot_distance_ft`, `is_three`. That is thin, which suggests a change to the
-  Phase 1 plan: train the live-usable model on the *mirror* (2002-2026, which
-  does have angle and far more rows) and use the 2014-15 logs solely for the
-  defender-distance study, rather than training both on the 2014-15 season.
-- **The defender-distance effect must be conditioned on shot distance.** Raw
-  make rate by defender bucket is non-monotonic because tightly contested shots
-  are disproportionately layups; the report includes the conditioned version.
+  current-season feature, but the endpoint does not return one. It only exists
+  in the 2014-15 shot logs, so it can't be a live feature.
+- **No shot angle in the old logs.** The 2014-15 logs have `SHOT_DIST` but no
+  coordinates, so angle can't be worked back out of them.
+- **Shared feature set, as measured:** `period`,
+  `seconds_remaining_in_period`, `shot_distance_ft`, `is_three`. That is thin,
+  so Phase 1 trains the live model on the mirror (2002-2026, has angle and many
+  more rows) and uses the 2014-15 logs only for the defender-distance study.
+- **Defender distance has to be compared within a shot-distance bucket.** Make
+  rate by raw defender bucket goes the wrong way because tightly guarded shots
+  are mostly layups; the report shows both versions.
 
 ## Layout
 
@@ -54,9 +52,9 @@ tests/            unit tests; no test touches the network
 notebooks/        00_phase0_data_validation.ipynb (Phase 0 definition of done)
 ```
 
-Sources are kept behind one canonical schema (`schema.CANONICAL_COLUMNS`) so a
-column a source cannot populate becomes an explicit null rather than a missing
-key — that is what makes the coverage numbers in the overlap table meaningful.
+Every source is mapped onto one schema (`schema.CANONICAL_COLUMNS`), so a column
+a source can't fill shows up as an all-null column instead of a missing key.
+That is what the coverage numbers in the overlap table count.
 
 ## Getting the data
 
@@ -78,5 +76,4 @@ ruff check .              # lint
 
 ## Next
 
-Phase 1 (shot-quality model) per the roadmap, with the training-source change
-noted above.
+Phase 1, the shot-quality model, using the training sources described above.
