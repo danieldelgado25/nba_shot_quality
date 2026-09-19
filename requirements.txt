@@ -1,0 +1,10 @@
+polars
+pandas
+pyarrow
+nba_api
+scikit-learn
+xgboost
+matplotlib
+jupyter
+pytest
+ruff
